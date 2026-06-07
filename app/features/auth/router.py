@@ -523,14 +523,14 @@ def logout(response: Response, current_user=Depends(get_current_user)):
         key="access_token",
         httponly=True,
         secure=False,
-        samesite="lax",
+        samesite="none",
         path="/"
     )
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
         secure=False,
-        samesite="lax",
+        samesite="none",
         path="/"
     )
     return
@@ -647,7 +647,7 @@ def get_google_auth_link(response: Response):
         value=secure_state,
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",
         max_age=300,
         path="/"
     )
