@@ -519,22 +519,24 @@ def login(req: LoginRequest, request: Request, response: Response, db: Session =
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(response: Response, current_user=Depends(get_current_user)):
+    # Automatically uses "none" (with secure=True) in production
+    samesite_policy = "none" if settings.COOKIE_SECURE else "none"
+    
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        secure=False,
-        samesite="none",
+        secure=settings.COOKIE_SECURE,  # Dynamic flag
+        samesite=samesite_policy,       # Dynamic policy
         path="/"
     )
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
-        secure=False,
-        samesite="none",
+        secure=settings.COOKIE_SECURE,  # Dynamic flag
+        samesite=samesite_policy,       # Dynamic policy
         path="/"
     )
     return
-
 @router.get("/me", response_model=UserResponse)
 def get_my_profile(current_user=Depends(get_current_user)):
     return current_user
