@@ -646,7 +646,7 @@ def get_google_auth_link(response: Response):
         key="oauth_state",
         value=secure_state,
         httponly=True,
-        secure=False,
+        secure=True,
         samesite="lax",
         max_age=300,
         path="/"
