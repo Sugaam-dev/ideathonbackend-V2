@@ -428,6 +428,9 @@
 
 #     return redirect_response
 
+
+
+
 import os
 import secrets
 import io
@@ -658,7 +661,7 @@ def get_google_auth_link(response: Response):
 
 
 # =====================================================================
-# ✅ GOOGLE CALLBACK (Synchronous Def)
+# ✅ GOOGLE CALLBACK (Synchronous Def & Bypassed iOS oauth_state Check)
 # =====================================================================
 
 @router.get("/google/callback")
@@ -668,12 +671,12 @@ def process_google_auth_handshake(
     oauth_state: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
-    # Verify OAuth state (CSRF protection)
-    if not oauth_state or state != oauth_state:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Security state signature token verification failed. Unauthorized handshake."
-        )
+    # Verify OAuth state (CSRF protection bypassed to allow cross-domain Google login on iOS/Safari browsers)
+    # if not oauth_state or state != oauth_state:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_401_UNAUTHORIZED,
+    #         detail="Security state signature token verification failed. Unauthorized handshake."
+    #     )
 
     # Get/Create Google user (Running synchronously on FastAPI's thread pool)
     user = services.process_google_callback(code, db)
