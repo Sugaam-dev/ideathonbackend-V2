@@ -1,0 +1,36 @@
+# Python bytecode/caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Local Environment/Secrets File (CRITICAL: Do not commit passwords!)
+.env
+
+# SQLite local databases
+*.db
+*.sqlite3
+
+# Local Uploads directory (files uploaded by participants)
+uploads/
+
+# IDE/Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS specific files
+Thumbs.db
+db.db
+Desktop.ini
+.DS_Store
