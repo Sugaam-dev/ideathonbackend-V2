@@ -1,16 +1,16 @@
+
+
+
 # from sqlalchemy import create_engine
 # from sqlalchemy.ext.declarative import declarative_base
 # from sqlalchemy.orm import sessionmaker
 # from app.config import settings
 
-# # Construct the local SQLite connection string
-# DATABASE_URL = f"sqlite:///{settings.DB_PATH}"
+# # MySQL database connection URL loading
+# DATABASE_URL = settings.DATABASE_URL
 
-# # check_same_thread=False is strictly required to permit SQLite's multi-threading model
-# engine = create_engine(
-#     DATABASE_URL, 
-#     connect_args={"check_same_thread": False}
-# )
+# # Establish MySQL database engine connection
+# engine = create_engine(DATABASE_URL)
 
 # # Thread-isolated session factory for generating clean database transactions
 # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -38,8 +38,14 @@ from app.config import settings
 # MySQL database connection URL loading
 DATABASE_URL = settings.DATABASE_URL
 
-# Establish MySQL database engine connection
-engine = create_engine(DATABASE_URL)
+# Establish MySQL database engine connection with optimized production connection pooling
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=20,          # Keep up to 20 connections open per worker process
+    max_overflow=30,       # Allow scaling up to 50 connections under sudden peak loads
+    pool_recycle=3600,     # Recycle connections older than 1 hour to prevent timeout disconnects
+    pool_pre_ping=True     # Check connection health before using it (prevents "MySQL went away" errors)
+)
 
 # Thread-isolated session factory for generating clean database transactions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

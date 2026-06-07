@@ -428,7 +428,6 @@
 
 #     return redirect_response
 
-
 import os
 import secrets
 import io
@@ -537,6 +536,7 @@ def logout(response: Response, current_user=Depends(get_current_user)):
         path="/"
     )
     return
+
 @router.get("/me", response_model=UserResponse)
 def get_my_profile(current_user=Depends(get_current_user)):
     return current_user
@@ -658,11 +658,11 @@ def get_google_auth_link(response: Response):
 
 
 # =====================================================================
-# ✅ GOOGLE CALLBACK
+# ✅ GOOGLE CALLBACK (Synchronous Def)
 # =====================================================================
 
 @router.get("/google/callback")
-async def process_google_auth_handshake(
+def process_google_auth_handshake(
     code: str,
     state: str,
     oauth_state: Optional[str] = Cookie(None),
@@ -675,8 +675,8 @@ async def process_google_auth_handshake(
             detail="Security state signature token verification failed. Unauthorized handshake."
         )
 
-    # Get/Create Google user
-    user = await services.process_google_callback(code, db)
+    # Get/Create Google user (Running synchronously on FastAPI's thread pool)
+    user = services.process_google_callback(code, db)
 
     # Create redirect response to frontend dashboard URL from configurations
     redirect_response = RedirectResponse(
