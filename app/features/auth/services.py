@@ -185,7 +185,7 @@ def set_session_cookie(response: Response, user: User) -> None:
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,  # Set to True only when using HTTPS
+        secure=settings.COOKIE_SECURE,  # Set to True only when using HTTPS
         samesite="none",
         max_age=access_max_age,
          domain=".sugaam.in",
