@@ -1,46 +1,3 @@
-# version: '3.8'
-
-# services:
-#   db:
-#     image: mysql:8.0
-#     container_name: ideathon_mysql
-#     restart: always
-#     environment:
-#       # Reads dynamically from .env
-#       MYSQL_DATABASE: ${DB_NAME}
-#       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-#     ports:
-#       - "3306:3306"
-#     volumes:
-#       - mysql_data:/var/lib/mysql
-#     healthcheck:
-#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-#       interval: 5s
-#       timeout: 5s
-#       retries: 5
-#       start_period: 10s
-
-#   backend:
-#     build: .
-#     container_name: ideathon_backend
-#     restart: always
-#     ports:
-#       - "8000:8000"
-#     volumes:
-#       - ./uploads:/app/uploads
-#     env_file:
-#       - .env
-#     environment:
-#       # Dynamically constructs URL using .env variables, replacing localhost with the container name db
-#       - DATABASE_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
-#       - PORT=8000
-#     depends_on:
-#       db:
-#         condition: service_healthy
-
-# volumes:
-#   mysql_data:
-
 version: '3.8'
 
 services:
@@ -49,10 +6,11 @@ services:
     container_name: ideathon_mysql
     restart: always
     environment:
-      MYSQL_DATABASE: ideathon_db
-      MYSQL_ROOT_PASSWORD: root
+      # Reads values dynamically from your .env file
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     ports:
-      # Map to host port 3307 to avoid conflict with local MySQL on port 3306
+      # Mapped to host port 3307 to prevent port conflicts with local MySQL running on port 3306
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
@@ -74,8 +32,8 @@ services:
     env_file:
       - .env
     environment:
-      # Connects to the database container on port 3306
-      - DATABASE_URL=mysql+pymysql://root:root@db:3306/ideathon_db
+      # Dynamically builds connection URL pointing to the "db" container with the credentials from your .env
+      - DATABASE_URL=mysql+pymysql://root:${DB_ROOT_PASSWORD}@db:3306/${DB_NAME}
       - PORT=8000
     depends_on:
       db:
