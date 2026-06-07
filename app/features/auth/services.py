@@ -1,6 +1,3 @@
-
-
-
 import secrets
 import httpx
 import jwt
@@ -180,25 +177,27 @@ def set_session_cookie(response: Response, user: User) -> None:
     access_max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     refresh_max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 
-    # 4. Set access token cookie
+    # 4. SameSite policy based on HTTPS configuration
+    samesite_policy = "none" if settings.COOKIE_SECURE else "lax"
+
+    # 5. Set access token cookie (Removed domain, synced max_age, path, samesite)
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.COOKIE_SECURE,  # Set to True only when using HTTPS
-        samesite="none",
+        secure=settings.COOKIE_SECURE,
+        samesite=samesite_policy,
         max_age=access_max_age,
-         domain=".sugaam.in",
         path="/"
     )
 
-    # 5. Set refresh token cookie
+    # 6. Set refresh token cookie (Sync keys with access token)
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,  # Set to True only when using HTTPS
-        samesite="none",
+        secure=settings.COOKIE_SECURE,
+        samesite=samesite_policy,
         max_age=refresh_max_age,
         path="/"
     )
