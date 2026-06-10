@@ -63,6 +63,18 @@ app = FastAPI(
     description="Secure Modular Enterprise Hackathon Platform Architecture"
 )
 
+@app.on_event("startup")
+def verify_production_cookie_security():
+    # Enforce secure cookies in production environments, while allowing HTTP locally
+    origins_list = [o.strip() for o in settings.FRONTEND_ORIGINS.split(",")]
+    is_local = any("localhost" in origin or "127.0.0.1" in origin for origin in origins_list)
+    if not is_local and not settings.COOKIE_SECURE:
+        raise ValueError(
+            "CRITICAL SECURITY CONFIGURATION ERROR: "
+            "COOKIE_SECURE must be set to True in production environments! "
+            "Ensure COOKIE_SECURE=True is set in your .env file."
+        )
+
 # 4. Attach Rate Limiter and Exception Handlers
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

@@ -453,6 +453,15 @@ def resend_recovery_otp(
 ):
     services.resend_recovery_otp(db, req.email, background_tasks)
     return {"message": "A new password recovery OTP has been dispatched to your inbox."}
+@router.post("/forgot-password/verify-otp", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")
+def verify_recovery_otp(
+    req: OtpVerificationRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    services.verify_recovery_otp_token(db, req.email, req.otp_code)
+    return {"message": "Recovery code verified successfully."}
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 @limiter.limit("10/minute")
 def reset_password(req: ResetPasswordSubmit, request: Request, db: Session = Depends(get_db)):
@@ -462,48 +471,20 @@ def reset_password(req: ResetPasswordSubmit, request: Request, db: Session = Dep
 # 🌐 Google OAuth Operations
 # =====================================================================
 @router.get("/google/login")
-def get_google_auth_link(response: Response):
-    secure_state = secrets.token_urlsafe(32)
-    auth_url = services.get_google_auth_url(secure_state)
-    samesite_policy = "none" if settings.COOKIE_SECURE else "lax"
-    response.set_cookie(
-        key="oauth_state",
-        value=secure_state,
-        httponly=True,
-        secure=settings.COOKIE_SECURE,
-        samesite=samesite_policy,
-        max_age=300,
-        path="/"
-    )
+def get_google_auth_link(state: str):
+    auth_url = services.get_google_auth_url(state)
     return {"auth_url": auth_url}
 # =====================================================================
-# ✅ GOOGLE CALLBACK
+# ✅ GOOGLE CALLBACK (API-Driven)
 # =====================================================================
-@router.get("/google/callback")
+@router.get("/google/callback", response_model=UserResponse)
 def process_google_auth_handshake(
     code: str,
-    state: str,
-    oauth_state: Optional[str] = Cookie(None),
+    response: Response,
     db: Session = Depends(get_db)
 ):
-    # Verify OAuth state (CSRF protection bypassed to allow cross-domain Google login on iOS/Safari browsers)
-    # if not oauth_state or state != oauth_state:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Security state signature token verification failed. Unauthorized handshake."
-    #     )
     # Get/Create Google user (Running synchronously on FastAPI's thread pool)
     user = services.process_google_callback(code, db)
-    # Create redirect response to frontend dashboard URL from configurations
-    redirect_response = RedirectResponse(
-        url=settings.FRONTEND_DASHBOARD_URL,
-        status_code=status.HTTP_303_SEE_OTHER
-    )
-    # Set access token cookie on redirect response
-    services.set_session_cookie(redirect_response, user)
-    # Remove oauth state cookie
-    redirect_response.delete_cookie(
-        key="oauth_state",
-        path="/"
-    )
-    return redirect_response
+    # Set access token cookie on the response
+    services.set_session_cookie(response, user)
+    return user

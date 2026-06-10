@@ -59,8 +59,16 @@ COPY . /app/
 # Create the uploads directory inside the container if it doesn't exist
 RUN mkdir -p /app/uploads
 
+# Create a non-privileged system user for container execution
+RUN groupadd -g 10001 appgroup && \
+    useradd -u 10001 -g appgroup -m -s /bin/bash appuser && \
+    chown -R appuser:appgroup /app
+
 # Expose port
 EXPOSE 8000
+
+# Switch context to the non-root user
+USER appuser
 
 # Start Uvicorn web server with 4 concurrent worker processes for high concurrency
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

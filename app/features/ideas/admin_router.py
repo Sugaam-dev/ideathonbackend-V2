@@ -24,9 +24,21 @@ admin_router = APIRouter(
     tags=["Administrative Control Panel"],
     dependencies=[Depends(require_completed_profile)]
 )
+from enum import Enum
+
+class AllowedStatus(str, Enum):
+    SUBMITTED = "Submitted"
+    UNDER_REVIEW = "Under Review"
+    SHORTLISTED = "Shortlisted"
+    INTERVIEW_SCHEDULED = "Interview Scheduled"
+    SELECTED = "Selected"
+    WINNER = "Winner"
+    INCUBATION_PHASE = "Incubation Phase"
+    CLOSED = "Closed"
+
 # Request model for status updates
 class StatusUpdateRequest(BaseModel):
-    status: str
+    status: AllowedStatus
 @admin_router.get("/stats", response_model=AdminStatsResponse)
 def get_portal_statistics(
     db: Session = Depends(get_db),
@@ -38,6 +50,8 @@ def get_global_submissions_pool(
     category: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
@@ -45,7 +59,9 @@ def get_global_submissions_pool(
         db,
         category=category,
         status=status,
-        search=search
+        search=search,
+        page=page,
+        limit=limit
     )
 @admin_router.post(
     "/{idea_id}/evaluate",
@@ -81,11 +97,13 @@ def update_project_pipeline_status(
 # =====================================================================
 @admin_router.get("/users", response_model=List[AdminUserResponse])
 def get_all_user_accounts(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
     """Retrieves list of all registered portal user accounts with basic metrics."""
-    return idea_services.fetch_admin_users_list(db)
+    return idea_services.fetch_admin_users_list(db, page=page, limit=limit)
 @admin_router.get("/users/{user_id}", response_model=AdminUserDetailResponse)
 def get_user_account_details(
     user_id: str,

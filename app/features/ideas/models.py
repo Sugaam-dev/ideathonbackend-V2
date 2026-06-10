@@ -296,7 +296,7 @@ from sqlalchemy import (
     Text
 )
 from sqlalchemy.dialects.mysql import LONGBLOB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, deferred
 from app.database import Base
 # =========================
 # UUID GENERATOR
@@ -393,8 +393,7 @@ class Attachment(Base):
         "AttachmentData",
         uselist=False,
         back_populates="attachment",
-        cascade="all, delete-orphan",
-        lazy="selectin"
+        cascade="all, delete-orphan"
     )
 # ==================================
 # ATTACHMENT BINARY DATA STORAGE
@@ -411,7 +410,7 @@ class AttachmentData(Base):
     )
     # 🔒 BINARY STORAGE
     # Uses standard LargeBinary with a MySQL specific LONGBLOB variant for files up to 4GB
-    file_data = Column(LargeBinary().with_variant(LONGBLOB, "mysql"), nullable=False)
+    file_data = deferred(Column(LargeBinary().with_variant(LONGBLOB, "mysql"), nullable=False))
     # RELATIONSHIP
     attachment = relationship("Attachment", back_populates="file_data_relation")
 # =========================

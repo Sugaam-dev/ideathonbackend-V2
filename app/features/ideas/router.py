@@ -155,6 +155,16 @@ def edit_idea_submission(idea_id: str, req: IdeaCreateOrUpdateRequest, current_u
 async def upload_idea_document(idea_id: str, file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if file.size and file.size > 25 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Document assets cannot pass 25MB metrics.")
+    
+    # Validate file type and extension to prevent malicious executions
+    import os
+    ALLOWED_EXTENSIONS = {'.pdf', '.docx', '.png', '.jpg', '.jpeg'}
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS or file.content_type not in ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file format. Only PDF, DOCX, and Image attachments (PNG/JPEG) are permitted."
+        )
     return await services.store_idea_binary_file(db, idea_id, current_user.id, current_user.role == "ADMIN", file)
 @router.get("/attachments/download/{attachment_id}")
 def download_idea_document(attachment_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

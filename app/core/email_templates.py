@@ -10,7 +10,7 @@ def get_registration_otp_email(user_name: str, otp: str) -> str:
                     <!-- Header -->
                     <div style="background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%); padding: 32px 24px; text-align: center;">
                         <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">Verify Your Email</h1>
-                        <p style="color: #e0e7ff; margin: 8px 0 0 0; font-size: 14px;">PMRG Ideathon </p>
+                        <p style="color: #e0e7ff; margin: 8px 0 0 0; font-size: 14px;">PMRG Solution Ideathon </p>
                     </div>
                     <!-- Content -->
                     <div style="padding: 32px 24px; color: #1f2937; line-height: 1.6;">
@@ -27,7 +27,7 @@ def get_registration_otp_email(user_name: str, otp: str) -> str:
                     </div>
                     <!-- Footer -->
                     <div style="background-color: #f9fafb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
-                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solutions. All rights reserved.</p>
+                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solution. All rights reserved.</p>
                         <p style="margin: 0;">This is an automated security system notification.</p>
                     </div>
                 </div>
@@ -45,7 +45,7 @@ def get_recovery_otp_email(user_name: str, otp: str) -> str:
                     <!-- Header -->
                     <div style="background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); padding: 32px 24px; text-align: center;">
                         <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">Reset Your Password</h1>
-                        <p style="color: #ffe4e6; margin: 8px 0 0 0; font-size: 14px;">PMRG Ideathon </p>
+                        <p style="color: #ffe4e6; margin: 8px 0 0 0; font-size: 14px;">PMRG Solution Ideathon </p>
                     </div>
                     <!-- Content -->
                     <div style="padding: 32px 24px; color: #1f2937; line-height: 1.6;">
@@ -62,7 +62,7 @@ def get_recovery_otp_email(user_name: str, otp: str) -> str:
                     </div>
                     <!-- Footer -->
                     <div style="background-color: #f9fafb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
-                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solutions. All rights reserved.</p>
+                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solution. All rights reserved.</p>
                         <p style="margin: 0;">This is an automated security system notification.</p>
                     </div>
                 </div>
@@ -108,7 +108,7 @@ def get_admin_new_idea_email(idea_title: str, user_name: str) -> str:
                     </div>
                     <!-- Footer -->
                     <div style="background-color: #f9fafb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
-                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solutions. All rights reserved.</p>
+                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solution. All rights reserved.</p>
                         <p style="margin: 0;">This is an automated backend alert.</p>
                     </div>
                 </div>
@@ -166,7 +166,7 @@ def get_status_update_email(participant_name: str, idea_title: str, status: str)
             "banner_bg": "#fef9c3",
             "banner_border": "#fef08a",
             "banner_color": "#854d0e",
-            "copy": "Outstanding achievement! Your submission has been declared a official Winner of the PMRG Ideathon. The steering panel commends your dedication and innovative solution."
+            "copy": "Outstanding achievement! Your submission has been declared a official Winner of the PMRG Solution Ideathon. The steering panel commends your dedication and innovative solution."
         },
         "Incubation Phase": {
             "title": "Status Updated: Incubation Phase",
@@ -195,7 +195,7 @@ def get_status_update_email(participant_name: str, idea_title: str, status: str)
                     <!-- Header -->
                     <div style="background: {styles['gradient']}; padding: 32px 24px; text-align: center;">
                         <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">{styles['title']}</h1>
-                        <p style="color: #ffffff; opacity: 0.85; margin: 8px 0 0 0; font-size: 14px;">PMRG Ideathon </p>
+                        <p style="color: #ffffff; opacity: 0.85; margin: 8px 0 0 0; font-size: 14px;">PMRG Solution Ideathon </p>
                     </div>
                     <!-- Content -->
                     <div style="padding: 32px 24px; color: #1f2937; line-height: 1.6;">
@@ -221,7 +221,7 @@ def get_status_update_email(participant_name: str, idea_title: str, status: str)
                     </div>
                     <!-- Footer -->
                     <div style="background-color: #f9fafb; padding: 24px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
-                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solutions. All rights reserved.</p>
+                        <p style="margin: 0 0 6px 0;">&copy; 2026 PMRG Solution. All rights reserved.</p>
                         <p style="margin: 0;">This is an automated pipeline state update notification.</p>
                     </div>
                 </div>

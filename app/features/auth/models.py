@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, LargeBinary, Text
 from sqlalchemy.dialects.mysql import LONGBLOB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, deferred
 from app.database import Base
 def generate_uuid() -> str:
     """Generates a secure string UUID for primary keys."""
@@ -30,12 +30,12 @@ class User(Base):
     # Google OAuth Profile validation column
     is_profile_complete = Column(Boolean, default=True, nullable=False)
     # Relationship to the heavy Resume binary model
+      # Relationship to the heavy Resume binary model
     resume = relationship(
         "Resume",
         uselist=False,
         back_populates="user",
-        cascade="all, delete-orphan",
-        lazy="selectin"
+        cascade="all, delete-orphan"
     )
     @property
     def has_password(self) -> bool:
@@ -51,8 +51,8 @@ class Resume(Base):
         nullable=False,
         index=True
     )
-    # Uses standard LargeBinary with a MySQL specific LONGBLOB variant for files up to 4GB
-    file_data = Column(LargeBinary().with_variant(LONGBLOB, "mysql"), nullable=False)
+     # Uses standard LargeBinary with a MySQL specific LONGBLOB variant for files up to 4GB
+    file_data = deferred(Column(LargeBinary().with_variant(LONGBLOB, "mysql"), nullable=False))
     # Relationship back to the User model
     user = relationship("User", back_populates="resume")
 class EmailLog(Base):

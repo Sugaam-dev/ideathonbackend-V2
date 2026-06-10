@@ -38,6 +38,31 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  redis:
+    image: redis:7-alpine
+    container_name: ideathon_redis
+    restart: always
+    # Exposing no ports to host keeps the Redis instance completely secure within the Docker network.
+
+  celery_worker:
+    build: .
+    container_name: ideathon_celery
+    restart: always
+    command: celery -A app.core.celery_app worker --loglevel=info
+    volumes:
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=mysql+pymysql://root:${DB_ROOT_PASSWORD}@db:3306/${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   mysql_data:

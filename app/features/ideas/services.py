@@ -3,7 +3,7 @@ import uuid
 import os
 import io
 from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.config import settings
 from app.core import email
@@ -118,8 +118,9 @@ def fetch_administrative_dashboard_metrics(db: Session) -> Dict[str, Any]:
         "selected": selected,
         "by_category": [{"category": r[0], "count": r[1]} for r in category_counts]
     }
-def fetch_global_submissions_pool(db: Session, category=None, status=None, search=None):
-    query = db.query(Idea).join(User, Idea.user_id == User.id)
+def fetch_global_submissions_pool(db: Session, category=None, status=None, search=None, page: int = 1, limit: int = 20):
+    # Eager load attachments and join users to prevent loop queries
+    query = db.query(Idea).options(joinedload(Idea.attachments)).join(User, Idea.user_id == User.id)
     if category:
         query = query.filter(Idea.category.ilike(category)) 
         
@@ -132,13 +133,91 @@ def fetch_global_submissions_pool(db: Session, category=None, status=None, searc
             (Idea.title.ilike(pattern)) |
             (User.name.ilike(pattern))
         )
-    ideas = query.order_by(Idea.submitted_at.desc()).all()
-    return [idea_to_response(db, idea) for idea in ideas]
+    # Apply pagination offset limits
+    offset = (page - 1) * limit
+    ideas = query.order_by(Idea.submitted_at.desc()).offset(offset).limit(limit).all()
+    
+    # Bulk preload submitter profiles
+    user_ids = {idea.user_id for idea in ideas}
+    users_map = {}
+    if user_ids:
+        users_query = db.query(User).filter(User.id.in_(user_ids)).all()
+        users_map = {u.id: u for u in users_query}
+        
+    # Bulk preload portfolio ordering serial numbers to avoid N+1 loop queries
+    order_map = {}
+    for uid in user_ids:
+        user_portfolio = (
+            db.query(Idea.id)
+            .filter(Idea.user_id == uid)
+            .order_by(Idea.submitted_at.asc())
+            .all()
+        )
+        portfolio_ids = [row[0] for row in user_portfolio]
+        for idx, idea_id in enumerate(portfolio_ids):
+            order_map[idea_id] = idx + 1
+
+    res = []
+    for idea in ideas:
+        submitter = users_map.get(idea.user_id)
+        order_num = order_map.get(idea.id, 1)
+        attachments = [
+            {
+                "id": a.id,
+                "original_name": a.original_name,
+                "file_size": a.file_size,
+                "uploaded_at": a.uploaded_at
+            }
+            for a in idea.attachments
+        ]
+        evaluations = [
+            {
+                "reviewer_id": e.reviewer_id,
+                "innovation_score": e.innovation_score,
+                "feasibility_score": e.feasibility_score,
+                "market_score": e.market_score,
+                "scalability_score": e.scalability_score,
+                "comments": e.comments
+            }
+            for e in idea.evaluations
+        ]
+        res.append({
+            "id": idea.id,
+            "submitter_order_number": order_num,
+            "submitter_name": submitter.name if submitter else "Anonymous",
+            "submitter_email": submitter.email if submitter else "N/A",
+            "submitter_organization": submitter.organization if submitter else "N/A",
+            "title": idea.title,
+            "category": idea.category,
+            "status": idea.status,
+            "current_stage": idea.current_stage,
+            "problem_statement": idea.problem_statement,
+            "proposed_solution": idea.proposed_solution,
+            "target_audience": idea.target_audience,
+            "market_opportunity": idea.market_opportunity,
+            "competitive_advantage": idea.competitive_advantage,
+            "revenue_model": idea.revenue_model,
+            "business_impact": idea.business_impact,
+            "scalability": idea.scalability,
+            "tech_requirements": idea.tech_requirements,
+            "figma_link": idea.figma_link,
+            "github_link": idea.github_link,
+            "drive_link": idea.drive_link,
+            "demo_url": idea.demo_url,
+            "evaluation_score": idea.evaluation_score,
+            "reviewer_notes": idea.reviewer_notes,
+            "evaluations": evaluations,
+            "submitted_at": idea.submitted_at,
+            "attachments": attachments
+        })
+    return res
 def log_new_participant_idea(db, user_name, user_email, user_id, req, background_tasks, idempotency_key=None):
-    if idempotency_key:
-        existing = db.query(Idea).filter(Idea.idempotency_key == idempotency_key).first()
-        if existing:
-            raise BadRequestError("Duplicate submission blocked.")
+    if not idempotency_key:
+        raise BadRequestError("Idempotency key is required to submit a proposal.")
+    
+    existing = db.query(Idea).filter(Idea.idempotency_key == idempotency_key).first()
+    if existing:
+        raise BadRequestError("Duplicate submission blocked.")
     # 🚨 LIMIT CHECK: A user can submit at most 3 ideas
     existing_count = db.query(Idea).filter(Idea.user_id == user_id).count()
     if existing_count >= 3:
@@ -251,19 +330,32 @@ def delete_idea_attachment(db: Session, attachment_id: str, user_id: str, is_adm
 # =====================================================================
 # 🔥 NEW: ADMINISTRATIVE USER AUDITING GATEWAY SERVICES
 # =====================================================================
-def fetch_admin_users_list(db: Session) -> List[Dict[str, Any]]:
-    """Lists all registered users in the database alongside their submitted ideas count."""
-    users = db.query(User).order_by(User.created_at.desc()).all()
+def fetch_admin_users_list(db: Session, page: int = 1, limit: int = 20) -> List[Dict[str, Any]]:
+    """Lists all registered users in the database alongside their submitted ideas count with pagination."""
+    offset = (page - 1) * limit
+    users = db.query(User).order_by(User.created_at.desc()).offset(offset).limit(limit).all()
+    
+    # Bulk count ideas to avoid loop querying (N+1 query resolution)
+    user_ids = [u.id for u in users]
+    counts_map = {}
+    if user_ids:
+        counts_query = (
+            db.query(Idea.user_id, func.count(Idea.id))
+            .filter(Idea.user_id.in_(user_ids))
+            .group_by(Idea.user_id)
+            .all()
+        )
+        counts_map = {row[0]: row[1] for row in counts_query}
+        
     result = []
     for u in users:
-        idea_count = db.query(Idea).filter(Idea.user_id == u.id).count()
         result.append({
             "id": u.id,
             "name": u.name,
             "email": u.email,
             "role": u.role,
             "is_profile_complete": u.is_profile_complete,
-            "ideas_count": idea_count,
+            "ideas_count": counts_map.get(u.id, 0),
             "created_at": u.created_at
         })
     return result

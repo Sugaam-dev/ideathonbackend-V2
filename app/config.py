@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     UPLOAD_DIR: str = "uploads"
     FRONTEND_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    REDIS_URL: str = "redis://localhost:6379/0"
     
     # Frontend Dashboard URL (Loaded dynamically from your .env)
     FRONTEND_DASHBOARD_URL: str

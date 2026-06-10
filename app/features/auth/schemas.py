@@ -71,6 +71,17 @@ class RegisterRequest(BaseModel):
     linkedin: Optional[str] = None
     password: str = Field(..., min_length=8)
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Password must contain at least one digit")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("Password must contain at least one special character")
+        return v
+
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, v: str) -> str:
@@ -85,6 +96,17 @@ class LoginRequest(BaseModel):
 class PasswordChangeRequest(BaseModel):
     old_password: Optional[str] = None
     new_password: str = Field(..., min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("New password must contain at least one uppercase letter")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("New password must contain at least one digit")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
+            raise ValueError("New password must contain at least one special character")
+        return v
 
 class ProfileUpdateRequest(BaseModel):
     phone: str = Field(..., min_length=10, max_length=20)

@@ -450,7 +450,7 @@ def resend_registration_otp(db: Session, email_str: str, background_tasks: Backg
     generated_otp = generate_secure_otp()
     expiry_horizon = datetime.now(timezone.utc) + timedelta(minutes=5)
     
-    user.otp_code = generated_otp
+    user.otp_code = f"{generated_otp}:5"
     user.otp_expires_at = expiry_horizon
     db.commit()
     db.refresh(user)
@@ -468,7 +468,7 @@ def resend_recovery_otp(db: Session, email_str: str, background_tasks: Backgroun
     generated_otp = generate_secure_otp()
     expiry_horizon = datetime.now(timezone.utc) + timedelta(minutes=5)
     
-    user.otp_code = generated_otp
+    user.otp_code = f"{generated_otp}:5"
     user.otp_expires_at = expiry_horizon
     db.commit()
     db.refresh(user)
@@ -497,12 +497,17 @@ def create_user_account(db: Session, req: RegisterRequest, resume: Optional[Uplo
         password_hash=security.hash_password(req.password),
         role="PARTICIPANT",
         is_active=False,
-        otp_code=generated_otp,
+        otp_code=f"{generated_otp}:5",
         otp_expires_at=expiry_horizon,
         is_profile_complete=True
     )
-    db.add(new_user)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.add(new_user)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise DuplicateResourceError("This email address is already verified and registered.")
     db.refresh(new_user)
     
     # Save resume file directly in database if uploaded
@@ -528,11 +533,28 @@ def verify_registration_otp_token(db: Session, email_str: str, entered_otp: str)
     if user.is_active:
         raise BadRequestError("This profile structure is already verified and completely operational.")
         
-    if user.otp_code != entered_otp:
-        raise AuthError("The code entered is invalid. Please double-check your credentials and try again.")
+    if not user.otp_code:
+        raise AuthError("No active verification code found. Please request a new code.")
+        
+    # Parse OTP and attempts remaining
+    parts = user.otp_code.split(":")
+    stored_otp = parts[0]
+    attempts_left = int(parts[1]) if len(parts) > 1 else 5
         
     if datetime.now(timezone.utc) > user.otp_expires_at.replace(tzinfo=timezone.utc):
         raise AuthError("Your verification token window has expired. Please launch a fresh registration sequence.")
+        
+    if stored_otp != entered_otp:
+        attempts_left -= 1
+        if attempts_left <= 0:
+            user.otp_code = None
+            user.otp_expires_at = None
+            db.commit()
+            raise AuthError("Too many failed attempts. This verification code has been invalidated. Please register or request a new code.")
+        else:
+            user.otp_code = f"{stored_otp}:{attempts_left}"
+            db.commit()
+            raise AuthError(f"The code entered is invalid. Please double-check your credentials. Attempts remaining: {attempts_left}")
         
     user.is_active = True
     user.otp_code = None
@@ -559,7 +581,10 @@ def authenticate_user(db: Session, req: LoginRequest) -> User:
         raise
     except Exception as e:
         # Catch other potential database or system failures
-        raise BadRequestError(f"Authentication process failed: {str(e)}")
+        import logging
+        logger = logging.getLogger("app.features.auth.services")
+        logger.error(f"Authentication database error: {str(e)}", exc_info=True)
+        raise BadRequestError("Authentication process failed. Please contact system support.")
 def set_session_cookie(response: Response, user: User) -> None:
     # 1. Generate access token
     access_token = security.create_access_token(
@@ -614,22 +639,67 @@ def initiate_forgot_password_workflow(db: Session, email_str: str, background_ta
         generated_otp = generate_secure_otp()
         expiry_horizon = datetime.now(timezone.utc) + timedelta(minutes=5)
         
-        user.otp_code = generated_otp
+        user.otp_code = f"{generated_otp}:5"
         user.otp_expires_at = expiry_horizon
         db.commit()
         
         dispatch_recovery_otp_email(background_tasks, user.email, user.name, generated_otp)
+def verify_recovery_otp_token(db: Session, email_str: str, entered_otp: str) -> None:
+    """Validates the recovery token parameters without resetting the password yet."""
+    user = db.query(User).filter(User.email == email_str).first()
+    if not user or not user.is_active:
+        raise ResourceNotFoundError("Account parameters missing or inactive.")
+        
+    if not user.otp_code:
+        raise AuthError("No active recovery code found. Please request a new code.")
+        
+    # Parse OTP and attempts remaining
+    parts = user.otp_code.split(":")
+    stored_otp = parts[0]
+    attempts_left = int(parts[1]) if len(parts) > 1 else 5
+        
+    if datetime.now(timezone.utc) > user.otp_expires_at.replace(tzinfo=timezone.utc):
+        raise AuthError("Your validation window expired. Please initiate a fresh password recovery email.")
+        
+    if stored_otp != entered_otp:
+        attempts_left -= 1
+        if attempts_left <= 0:
+            user.otp_code = None
+            user.otp_expires_at = None
+            db.commit()
+            raise AuthError("Too many failed attempts. This recovery code has been invalidated. Please request a new code.")
+        else:
+            user.otp_code = f"{stored_otp}:{attempts_left}"
+            db.commit()
+            raise AuthError(f"The recovery validation token provided is invalid. Attempts remaining: {attempts_left}")
 def execute_forgot_password_reset(db: Session, email_str: str, entered_otp: str, new_password_str: str) -> None:
     """Validates the recovery token parameters and permanently updates the user password."""
     user = db.query(User).filter(User.email == email_str).first()
     if not user or not user.is_active:
         raise ResourceNotFoundError("Account parameters missing or inactive.")
         
-    if not user.otp_code or user.otp_code != entered_otp:
-        raise AuthError("The recovery validation token provided is invalid.")
+    if not user.otp_code:
+        raise AuthError("No active recovery code found. Please request a new code.")
+        
+    # Parse OTP and attempts remaining
+    parts = user.otp_code.split(":")
+    stored_otp = parts[0]
+    attempts_left = int(parts[1]) if len(parts) > 1 else 5
         
     if datetime.now(timezone.utc) > user.otp_expires_at.replace(tzinfo=timezone.utc):
         raise AuthError("Your validation window expired. Please initiate a fresh password recovery email.")
+        
+    if stored_otp != entered_otp:
+        attempts_left -= 1
+        if attempts_left <= 0:
+            user.otp_code = None
+            user.otp_expires_at = None
+            db.commit()
+            raise AuthError("Too many failed attempts. This recovery code has been invalidated. Please request a new code.")
+        else:
+            user.otp_code = f"{stored_otp}:{attempts_left}"
+            db.commit()
+            raise AuthError(f"The recovery validation token provided is invalid. Attempts remaining: {attempts_left}")
         
     user.password_hash = security.hash_password(new_password_str)
     user.otp_code = None
